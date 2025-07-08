@@ -9,17 +9,6 @@ import fs from "fs";
 
 dotenv.config();
 
-// Tipos simples
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface Pedido {
-  id: number;
-  senha: string;
-  nome_cliente: string;
-  status: "preparando" | "pronto" | "cancelado";
-  created_at: string;
-  updated_at: string;
-}
-
 // Setup
 const app = express();
 const server = createServer(app);
@@ -184,8 +173,8 @@ app.post("/api/banner/upload", upload.single("banner"), (req, res) => {
       filename: req.file.filename,
       url: `/uploads/${req.file.filename}`,
     });
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "Erro ao fazer upload" });
   }
 });
@@ -208,8 +197,8 @@ app.get("/api/banner/current", (req, res) => {
     }
 
     res.json({ exists: false });
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "Erro ao verificar banner" });
   }
 });
@@ -234,8 +223,8 @@ app.delete("/api/banner/delete", (req, res) => {
     } else {
       res.status(404).json({ error: "Nenhum banner encontrado" });
     }
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "Erro ao remover banner" });
   }
 });

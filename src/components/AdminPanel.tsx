@@ -51,8 +51,8 @@ const AdminPanel = () => {
       } else {
         setMessage({ type: "error", text: "Erro ao fazer upload do banner" });
       }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
+      console.error(error);
       setMessage({ type: "error", text: "Erro ao conectar com o servidor" });
     }
 
@@ -74,8 +74,8 @@ const AdminPanel = () => {
       } else {
         setMessage({ type: "error", text: "Erro ao remover banner" });
       }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
+      console.error(error);
       setMessage({ type: "error", text: "Erro ao conectar com o servidor" });
     }
   };
@@ -138,7 +138,8 @@ const AdminPanel = () => {
               {uploading ? "Enviando..." : "Clique aqui ou arraste uma imagem"}
             </div>
             <div className="upload-hint">
-              Formatos aceitos: JPG, PNG, GIF, WEBP (máx. 5MB). Resolução ideal: 1920 x 250
+              Formatos aceitos: JPG, PNG, GIF, WEBP (máx. 5MB). Resolução ideal:
+              1920 x 250
             </div>
           </div>
 
