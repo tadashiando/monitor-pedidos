@@ -10,18 +10,12 @@ import fs from "fs";
 dotenv.config();
 
 // Tipos simples
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface Pedido {
   id: number;
   senha: string;
   nome_cliente: string;
-  status:
-    | "andamento"
-    | "preparando"
-    | "fazendo"
-    | "pronto"
-    | "finalizado"
-    | "concluido"
-    | "cancelado";
+  status: "preparando" | "pronto" | "cancelado";
   created_at: string;
   updated_at: string;
 }
@@ -101,16 +95,24 @@ db.connect()
 // Rotas dos pedidos
 app.get("/api/pedidos/andamento", async (req, res) => {
   try {
-    const result = await db.query<Pedido>(
-      `
-      SELECT * FROM public.pedidos 
-      WHERE status ILIKE ANY($1)
-      ORDER BY created_at DESC LIMIT 20
-    `,
-      [["%andamento%", "%preparando%", "%fazendo%"]]
-    );
+    const result = await db.query(`
+      SELECT id, nomecliente, horapedidoefetuado, horaempreparo
+      FROM public.contamesa 
+      WHERE horaempreparo IS NOT NULL 
+      AND horapronto IS NULL
+      ORDER BY horaempreparo ASC LIMIT 20
+    `);
 
-    res.json(result.rows);
+    const pedidos = result.rows.map((row) => ({
+      id: row.id,
+      senha: `#${row.id}`,
+      nome_cliente: row.nomecliente,
+      status: "preparando",
+      created_at: row.horapedidoefetuado,
+      updated_at: row.horaempreparo,
+    }));
+
+    res.json(pedidos);
   } catch {
     res.json([]);
   }
@@ -118,16 +120,26 @@ app.get("/api/pedidos/andamento", async (req, res) => {
 
 app.get("/api/pedidos/ultimo-pronto", async (req, res) => {
   try {
-    const result = await db.query<Pedido>(
-      `
-      SELECT * FROM public.pedidos 
-      WHERE status ILIKE ANY($1)
-      ORDER BY updated_at DESC LIMIT 1
-    `,
-      [["%pronto%", "%finalizado%", "%concluido%"]]
-    );
+    const result = await db.query(`
+      SELECT id, nomecliente, horapedidoefetuado, horapronto
+      FROM public.contamesa 
+      WHERE horapronto IS NOT NULL
+      ORDER BY horapronto DESC LIMIT 1
+    `);
 
-    res.json(result.rows[0] || null);
+    const pedido = result.rows[0];
+    if (pedido) {
+      res.json({
+        id: pedido.id,
+        senha: `#${pedido.id}`,
+        nome_cliente: pedido.nomecliente,
+        status: "pronto",
+        created_at: pedido.horapedidoefetuado,
+        updated_at: pedido.horapronto,
+      });
+    } else {
+      res.json(null);
+    }
   } catch {
     res.json(null);
   }
@@ -135,16 +147,23 @@ app.get("/api/pedidos/ultimo-pronto", async (req, res) => {
 
 app.get("/api/pedidos/prontos", async (req, res) => {
   try {
-    const result = await db.query<Pedido>(
-      `
-      SELECT * FROM public.pedidos 
-      WHERE status ILIKE ANY($1)
-      ORDER BY updated_at DESC LIMIT 10
-    `,
-      [["%pronto%", "%finalizado%", "%concluido%"]]
-    );
+    const result = await db.query(`
+      SELECT id, nomecliente, horapedidoefetuado, horapronto
+      FROM public.contamesa 
+      WHERE horapronto IS NOT NULL
+      ORDER BY horapronto DESC LIMIT 10
+    `);
 
-    res.json(result.rows);
+    const pedidos = result.rows.map((row) => ({
+      id: row.id,
+      senha: `#${row.id}`,
+      nome_cliente: row.nomecliente,
+      status: "pronto",
+      created_at: row.horapedidoefetuado,
+      updated_at: row.horapronto,
+    }));
+
+    res.json(pedidos);
   } catch {
     res.json([]);
   }
@@ -235,50 +254,52 @@ let jaLimpouPorInatividade = false;
 setInterval(async () => {
   try {
     // Busca pedidos que mudaram recentemente (updated_at)
-    const result = await db.query<Pedido>(
-      `
-      SELECT id, senha, status, updated_at 
-      FROM public.pedidos 
-      WHERE updated_at > $1
-      ORDER BY updated_at DESC
-    `,
+    const result = await db.query(
+      `SELECT id, nomecliente, horaempreparo, horapronto
+        FROM public.contamesa 
+        WHERE (horaempreparo > $1 OR horapronto > $1)
+        ORDER BY GREATEST(
+          COALESCE(horaempreparo, '1970-01-01'), 
+          COALESCE(horapronto, '1970-01-01')
+        ) DESC
+      `,
       [ultimaVerificacao]
     );
 
     if (result.rows.length > 0) {
-      console.log(`🔄 ${result.rows.length} pedido(s) alterado(s) recentemente:`);
+      console.log(
+        `🔄 ${result.rows.length} pedido(s) alterado(s) recentemente:`
+      );
 
       result.rows.forEach((pedido) => {
-        console.log(
-          `   • Pedido ${pedido.senha}: ${pedido.status} (${new Date(
-            pedido.updated_at!
-          ).toLocaleTimeString()})`
-        );
-
-        // Destaca se ficou pronto
         if (
-          pedido.status.toLowerCase().includes("pronto") ||
-          pedido.status.toLowerCase().includes("finalizado") ||
-          pedido.status.toLowerCase().includes("concluido")
+          pedido.horapronto &&
+          new Date(pedido.horapronto) > ultimaVerificacao
         ) {
-          console.log(`   🎉 PEDIDO ${pedido.senha} FICOU PRONTO!`);
+          console.log(
+            `   🎉 #${pedido.id} (${pedido.nomecliente}) FICOU PRONTO!`
+          );
+        } else if (
+          pedido.horaempreparo &&
+          new Date(pedido.horaempreparo) > ultimaVerificacao
+        ) {
+          console.log(`   🔥 #${pedido.id} (${pedido.nomecliente}) EM PREPARO`);
         }
       });
 
       console.log("📡 Emitindo atualização via WebSocket...");
       io.emit("pedido_update");
-      
+
       // Reset flag de limpeza - houve atividade!
       jaLimpouPorInatividade = false;
-      
     } else {
       // SEM atividade recente - verifica se precisa limpar
       const agora = new Date();
       const tempoSemAtividade = agora.getTime() - ultimaVerificacao.getTime();
-      
+
       if (tempoSemAtividade > TEMPO_INATIVIDADE && !jaLimpouPorInatividade) {
-        console.log('Período de inatividade detectado (3h) - limpando tela');
-        io.emit('novo_periodo');
+        console.log("Período de inatividade detectado (3h) - limpando tela");
+        io.emit("novo_periodo");
         jaLimpouPorInatividade = true; // Evita múltiplas limpezas
       }
     }
