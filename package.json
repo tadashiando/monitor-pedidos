@@ -3,11 +3,14 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "main": "server/index.ts",
   "scripts": {
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "client": "vite",
     "server": "tsx watch server/index.ts",
     "build": "tsc -b && vite build",
+    "build:server": "tsc server/index.ts --outDir dist-server --target ES2020 --module commonjs --esModuleInterop --allowSyntheticDefaultImports --skipLibCheck",
+    "build:all": "yarn build && yarn build:server",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -21,6 +24,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",
+    "@types/pg": "^8.15.4",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
     "@types/react-router-dom": "^5.3.3",

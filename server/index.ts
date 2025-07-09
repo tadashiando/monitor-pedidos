@@ -14,7 +14,7 @@ const app = express();
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: ["http://localhost:5173", "http://127.0.0.1:5173"],
+    origin: ["http://localhost:5173", "http://127.0.0.1:5173", "file://"],
     methods: ["GET", "POST"],
   },
 });
@@ -30,17 +30,24 @@ app.use((req, res, next) => {
   next();
 });
 
+// 🔥 NOVO: Caminho dos arquivos estáticos (sempre na pasta do executável)
+const staticPath = path.join(process.cwd(), "dist");
+
+// 🔥 NOVO: Servir arquivos estáticos do frontend
+app.use(express.static(staticPath));
+
 // Servir arquivos estáticos (banner)
-app.use("/uploads", express.static("uploads"));
+const uploadsPath = path.join(process.cwd(), "uploads");
+
+app.use("/uploads", express.static(uploadsPath));
 
 // Configurar multer para upload do banner
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadDir = "uploads";
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir);
+    if (!fs.existsSync(uploadsPath)) {
+      fs.mkdirSync(uploadsPath, { recursive: true });
     }
-    cb(null, uploadDir);
+    cb(null, uploadsPath);
   },
   filename: (req, file, cb) => {
     // Sempre salva como 'banner' + extensão
@@ -181,11 +188,10 @@ app.post("/api/banner/upload", upload.single("banner"), (req, res) => {
 
 app.get("/api/banner/current", (req, res) => {
   try {
-    const uploadDir = "uploads";
     const extensions = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
 
     for (const ext of extensions) {
-      const bannerPath = path.join(uploadDir, `banner${ext}`);
+      const bannerPath = path.join(uploadsPath, `banner${ext}`);
       if (fs.existsSync(bannerPath)) {
         res.json({
           exists: true,
@@ -205,12 +211,11 @@ app.get("/api/banner/current", (req, res) => {
 
 app.delete("/api/banner/delete", (req, res) => {
   try {
-    const uploadDir = "uploads";
     const extensions = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
 
     let deleted = false;
     for (const ext of extensions) {
-      const bannerPath = path.join(uploadDir, `banner${ext}`);
+      const bannerPath = path.join(uploadsPath, `banner${ext}`);
       if (fs.existsSync(bannerPath)) {
         fs.unlinkSync(bannerPath);
         deleted = true;
@@ -227,6 +232,79 @@ app.delete("/api/banner/delete", (req, res) => {
     console.error(error);
     res.status(500).json({ error: "Erro ao remover banner" });
   }
+});
+
+// Rotas do banner
+app.post("/api/banner/upload", upload.single("banner"), (req, res) => {
+  try {
+    if (!req.file) {
+      res.status(400).json({ error: "Nenhum arquivo enviado" });
+      return;
+    }
+
+    console.log("📷 Banner atualizado:", req.file.filename);
+
+    res.json({
+      success: true,
+      filename: req.file.filename,
+      url: `/uploads/${req.file.filename}`,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Erro ao fazer upload" });
+  }
+});
+
+app.get("/api/banner/current", (req, res) => {
+  try {
+    const extensions = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
+
+    for (const ext of extensions) {
+      const bannerPath = path.join(uploadsPath, `banner${ext}`);
+      if (fs.existsSync(bannerPath)) {
+        res.json({
+          exists: true,
+          url: `/uploads/banner${ext}`,
+          filename: `banner${ext}`,
+        });
+        return;
+      }
+    }
+
+    res.json({ exists: false });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Erro ao verificar banner" });
+  }
+});
+
+app.delete("/api/banner/delete", (req, res) => {
+  try {
+    const extensions = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
+
+    let deleted = false;
+    for (const ext of extensions) {
+      const bannerPath = path.join(uploadsPath, `banner${ext}`);
+      if (fs.existsSync(bannerPath)) {
+        fs.unlinkSync(bannerPath);
+        deleted = true;
+        console.log("🗑️ Banner removido:", `banner${ext}`);
+      }
+    }
+
+    if (deleted) {
+      res.json({ success: true, message: "Banner removido" });
+    } else {
+      res.status(404).json({ error: "Nenhum banner encontrado" });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Erro ao remover banner" });
+  }
+});
+
+app.get(/^(?!\/api).*/, (_req, res) => {
+  res.sendFile(path.join(staticPath, "index.html"));
 });
 
 // WebSocket
@@ -303,4 +381,6 @@ setInterval(async () => {
 const PORT = Number(process.env.PORT) || 3001;
 server.listen(PORT, () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
+  console.log(`📁 Servindo frontend de: ${staticPath}`);
+  console.log(`🌐 Acesse: http://localhost:${PORT}`);
 });
