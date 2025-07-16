@@ -25,5 +25,6 @@ dist-ssr
 *.sw?
 
 /scripts
+/uploads
 .env
 monitor-server.exe
