@@ -303,6 +303,492 @@ app.delete("/api/banner/delete", (req, res) => {
   }
 });
 
+// ENDPOINT ULTRA-LEGACY para TVs muito antigas (ES3/ES5 básico))
+app.get("/tv", (req, res) => {
+  const serverUrl = `${req.protocol}://${req.get("host")}`;
+
+  const ultraLegacyHtml = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Monitor de Pedidos - TV</title>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <style>
+        /* CSS Ultra-básico - compatível com IE6+ */
+        /* IMPORTANTE: Usando position absolute em vez de float para evitar problemas de layout */
+        * {
+            margin: 0;
+            padding: 0;
+        }
+        
+        html, body {
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            background: #000;
+        }
+        
+        .container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+        
+        .main-area {
+            width: 100%;
+            height: 80%; /* 80% para conteúdo, 20% para banner */
+            overflow: hidden;
+        }
+        
+        /* Layout sem float - mais confiável para TVs antigas */
+        .coluna-preparo {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 40%;
+            height: 100%;
+            background: #ff8c00;
+            border-right: 3px solid #ccc;
+        }
+        
+        .coluna-prontos {
+            position: absolute;
+            left: 40%;
+            top: 0;
+            width: 60%;
+            height: 100%;
+            background: #28a745;
+            border-left: 2px solid #c5c5c5;
+        }
+        
+        .titulo {
+            color: white;
+            text-align: center;
+            padding: 20px 0;
+            font-size: 32px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .lista {
+            padding: 30px;
+            background: #f0f0f0;
+            height: 85%;
+            overflow-y: auto;
+        }
+        
+        .pedido {
+            font-size: 40px;
+            font-weight: bold;
+            color: #000;
+            margin-bottom: 25px;
+            text-transform: uppercase;
+            line-height: 1.2;
+        }
+        
+        .pedido-destaque {
+            font-size: 60px;
+            text-align: center;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #c5c5c5;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+        
+        .banner-area {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 20%;
+            background: #2c3e50;
+            text-align: center;
+        }
+        
+        .banner-img {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .banner-placeholder {
+            color: #95a5a6;
+            font-size: 18px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 300px;
+            margin-left: -150px;
+            margin-top: -10px;
+        }
+        
+        /* Removido: .status-box - indicador de status removido */
+        
+        /* Media query mais simples */
+        @media screen and (max-width: 800px) {
+            .coluna-preparo {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 40%;
+            }
+            .coluna-prontos {
+                position: absolute;
+                left: 0;
+                top: 40%;
+                width: 100%;
+                height: 40%;
+            }
+            .banner-area {
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                width: 100%;
+                height: 20%;
+            }
+            .pedido {
+                font-size: 32px;
+            }
+            .pedido-destaque {
+                font-size: 48px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="main-area">
+            <div class="coluna-preparo">
+                <div class="titulo">Em Preparo</div>
+                <div class="lista" id="preparo-lista"></div>
+            </div>
+            
+            <div class="coluna-prontos">
+                <div class="titulo">Pedidos Prontos!</div>
+                <div class="lista" id="prontos-lista"></div>
+            </div>
+        </div>
+        
+        <div class="banner-area" id="banner-area">
+            <div class="banner-placeholder">Espaço para banner promocional</div>
+        </div>
+        
+        <!-- Status removido para layout mais limpo -->
+    </div>
+    
+    <script>
+        // ========================================
+        // JAVASCRIPT ULTRA-COMPATÍVEL (ES3)
+        // ========================================
+        
+        // Configuração global
+        var CONFIG = {
+            serverUrl: '${serverUrl}',
+            updateInterval: 4000,
+            maxRetries: 3,
+            debug: true
+        };
+        
+        // Estado global
+        var ESTADO = {
+            ultimoDestaque: null,
+            tentativas: 0,
+            funcionando: false
+        };
+        
+        // Referências aos elementos
+        var ELEMENTOS = {};
+        
+        // ========================================
+        // FUNÇÕES UTILITÁRIAS
+        // ========================================
+        
+        function log(msg) {
+            if (CONFIG.debug && window.console && window.console.log) {
+                console.log('[TV] ' + msg);
+            }
+        }
+        
+        function atualizarStatus(texto, classe) {
+            // Função mantida para compatibilidade, mas não exibe nada
+            // Status removido para layout mais limpo
+        }
+        
+        function obterTextoExibicao(pedido) {
+            // Prioridade: nome_cliente > senha > id
+            if (pedido.nome_cliente && pedido.nome_cliente !== '') {
+                return pedido.nome_cliente;
+            }
+            if (pedido.senha && pedido.senha !== '') {
+                return pedido.senha;
+            }
+            return '#' + pedido.id;
+        }
+        
+        // ========================================
+        // AJAX ULTRA-COMPATÍVEL
+        // ========================================
+        
+        function criarXHR() {
+            var xhr = null;
+            try {
+                // IE7+, Firefox, Chrome, Safari
+                xhr = new XMLHttpRequest();
+            } catch (e) {
+                try {
+                    // IE6
+                    xhr = new ActiveXObject('MSXML2.XMLHTTP');
+                } catch (e2) {
+                    try {
+                        // IE5
+                        xhr = new ActiveXObject('Microsoft.XMLHTTP');
+                    } catch (e3) {
+                        log('ERRO: XMLHttpRequest não suportado');
+                        return null;
+                    }
+                }
+            }
+            return xhr;
+        }
+        
+        function fazerRequisicao(url, sucesso, erro) {
+            var xhr = criarXHR();
+            if (!xhr) {
+                erro('XMLHttpRequest não disponível');
+                return;
+            }
+            
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        try {
+                            // Parse manual do JSON para compatibilidade
+                            var dados;
+                            if (window.JSON && window.JSON.parse) {
+                                dados = JSON.parse(xhr.responseText);
+                            } else {
+                                // Fallback para eval (não recomendado, mas funciona)
+                                dados = eval('(' + xhr.responseText + ')');
+                            }
+                            sucesso(dados);
+                        } catch (ex) {
+                            erro('Erro ao processar resposta: ' + ex.message);
+                        }
+                    } else {
+                        erro('Erro HTTP: ' + xhr.status);
+                    }
+                }
+            };
+            
+            try {
+                xhr.open('GET', url, true);
+                xhr.setRequestHeader('Accept', 'application/json');
+                xhr.send();
+            } catch (ex) {
+                erro('Erro ao enviar requisição: ' + ex.message);
+            }
+        }
+        
+        // ========================================
+        // FUNÇÕES DE DADOS
+        // ========================================
+        
+        function carregarPedidos() {
+            log('Carregando pedidos...');
+            
+            // Carregar pedidos em preparo
+            fazerRequisicao(
+                CONFIG.serverUrl + '/api/pedidos/andamento',
+                function(dados) {
+                    atualizarListaPreparo(dados);
+                    ESTADO.tentativas = 0;
+                    if (!ESTADO.funcionando) {
+                        ESTADO.funcionando = true;
+                        log('Conexão estabelecida com sucesso');
+                    }
+                },
+                function(erro) {
+                    log('Erro pedidos preparo: ' + erro);
+                    tratarErroConexao();
+                }
+            );
+            
+            // Carregar pedidos prontos
+            fazerRequisicao(
+                CONFIG.serverUrl + '/api/pedidos/prontos',
+                function(dados) {
+                    atualizarListaProntos(dados);
+                },
+                function(erro) {
+                    log('Erro pedidos prontos: ' + erro);
+                }
+            );
+        }
+        
+        function carregarBanner() {
+            fazerRequisicao(
+                CONFIG.serverUrl + '/api/banner/current',
+                function(dados) {
+                    if (dados.exists) {
+                        var bannerArea = ELEMENTOS.bannerArea;
+                        bannerArea.innerHTML = '<img src="' + CONFIG.serverUrl + dados.url + '?t=' + 
+                                              new Date().getTime() + '" class="banner-img" alt="Banner">';
+                    }
+                },
+                function(erro) {
+                    log('Erro ao carregar banner: ' + erro);
+                }
+            );
+        }
+        
+        // ========================================
+        // ATUALIZAÇÃO DA INTERFACE
+        // ========================================
+        
+        function atualizarListaPreparo(pedidos) {
+            var html = '';
+            var limite = 5; // Limite para TVs antigas
+            
+            for (var i = 0; i < Math.min(pedidos.length, limite); i++) {
+                html += '<div class="pedido">' + obterTextoExibicao(pedidos[i]) + '</div>';
+            }
+            
+            ELEMENTOS.preparoLista.innerHTML = html;
+        }
+        
+        function atualizarListaProntos(pedidos) {
+            var html = '';
+            
+            if (pedidos.length > 0) {
+                // Primeiro pedido em destaque
+                var primeiro = pedidos[0];
+                html += '<div class="pedido-destaque">' + obterTextoExibicao(primeiro) + '</div>';
+                
+                // Verificar se é novo destaque para tocar som
+                if (ESTADO.ultimoDestaque !== primeiro.id) {
+                    if (ESTADO.ultimoDestaque !== null) {
+                        tocarSom();
+                    }
+                    ESTADO.ultimoDestaque = primeiro.id;
+                }
+                
+                // Outros pedidos (máximo 3 para TVs antigas)
+                var limite = 3;
+                for (var i = 1; i < Math.min(pedidos.length, limite + 1); i++) {
+                    html += '<div class="pedido">' + obterTextoExibicao(pedidos[i]) + '</div>';
+                }
+            }
+            
+            ELEMENTOS.prontosLista.innerHTML = html;
+        }
+        
+        function tocarSom() {
+            try {
+                // Tentar tocar som se disponível
+                var audio = document.getElementById('som-notificacao');
+                if (audio && audio.play) {
+                    audio.play();
+                }
+            } catch (ex) {
+                log('Erro ao tocar som: ' + ex.message);
+            }
+        }
+        
+        // ========================================
+        // TRATAMENTO DE ERROS
+        // ========================================
+        
+        function tratarErroConexao() {
+            ESTADO.tentativas++;
+            ESTADO.funcionando = false;
+            
+            if (ESTADO.tentativas >= CONFIG.maxRetries) {
+                log('Conexão perdida, tentando reconectar em 30 segundos...');
+                // Reiniciar após 30 segundos
+                setTimeout(function() {
+                    ESTADO.tentativas = 0;
+                    carregarPedidos();
+                }, 30000);
+            } else {
+                log('Tentativa de reconexão: ' + ESTADO.tentativas + '/' + CONFIG.maxRetries);
+            }
+        }
+        
+        // ========================================
+        // LOOP PRINCIPAL
+        // ========================================
+        
+        function iniciarLoop() {
+            function executarLoop() {
+                carregarPedidos();
+                setTimeout(executarLoop, CONFIG.updateInterval);
+            }
+            executarLoop();
+        }
+        
+        // ========================================
+        // INICIALIZAÇÃO
+        // ========================================
+        
+        function inicializar() {
+            log('Inicializando Monitor TV Ultra-Legacy...');
+            
+            // Buscar elementos DOM (status removido)
+            ELEMENTOS.preparoLista = document.getElementById('preparo-lista');
+            ELEMENTOS.prontosLista = document.getElementById('prontos-lista');
+            ELEMENTOS.bannerArea = document.getElementById('banner-area');
+            
+            // Verificar se elementos existem
+            if (!ELEMENTOS.preparoLista || !ELEMENTOS.prontosLista) {
+                log('ERRO: Elementos DOM não encontrados!');
+                return;
+            }
+            
+            // Carregar dados iniciais
+            carregarPedidos();
+            carregarBanner();
+            
+            // Iniciar loop de atualização
+            iniciarLoop();
+            
+            log('Monitor TV inicializado com sucesso!');
+        }
+        
+        // ========================================
+        // EVENT LISTENERS COMPATÍVEIS
+        // ========================================
+        
+        // Aguardar carregamento da página (compatível com IE6+)
+        if (document.addEventListener) {
+            document.addEventListener('DOMContentLoaded', inicializar, false);
+        } else if (document.attachEvent) {
+            document.attachEvent('onreadystatechange', function() {
+                if (document.readyState === 'complete') {
+                    inicializar();
+                }
+            });
+        } else {
+            // Fallback para navegadores muito antigos
+            window.onload = inicializar;
+        }
+        
+        // Log de inicialização
+        log('Script carregado, aguardando DOM...');
+    </script>
+    
+    <!-- Som de notificação (opcional) -->
+    <audio id="som-notificacao" preload="auto" style="display: none;">
+        <source src="/ding-dong.wav" type="audio/wav">
+    </audio>
+</body>
+</html>`;
+
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.send(ultraLegacyHtml);
+});
+
 app.get(/^(?!\/api).*/, (_req, res) => {
   res.sendFile(path.join(staticPath, "index.html"));
 });
